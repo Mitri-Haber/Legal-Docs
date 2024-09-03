@@ -1,0 +1,5 @@
+azure-storage-blob==12.22.0
+azure-identity==1.17.1
+python-dotenv==1.0.1
+scrapy==2.11.2
+pymongo==4.8.0
