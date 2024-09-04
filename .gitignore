@@ -1,6 +1,6 @@
 *.log
 *.env
-*.json
+debug.json
 __pycache__/
 venv/
  
