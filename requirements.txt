@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 scrapy==2.11.2
 pymongo==4.8.0
 scrapy-playwright
+PyPDF2

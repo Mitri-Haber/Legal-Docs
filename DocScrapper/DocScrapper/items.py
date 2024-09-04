@@ -19,4 +19,6 @@ class PdfMetaData(scrapy.Item):
     pdf_download_url = scrapy.Field()
     pdf_content_hash = scrapy.Field()
     blob_relative_path = scrapy.Field()
+    is_valid_pdf = scrapy.Field()
     ts_inserted = scrapy.Field()
+    ts_updated = scrapy.Field()

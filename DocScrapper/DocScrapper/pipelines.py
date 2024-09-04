@@ -3,7 +3,8 @@ import pymongo
 import scrapy
 from itemadapter import ItemAdapter
 from DocScrapper.items import PdfMetaData
- 
+from datetime import datetime
+
 
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,18 @@ class MongoDBPipeline(object):
         """ Gets the  item and upsets in mongodb
         """
         logger.info(f"Upserting Metadata for {item['pdf_download_url']} ")
+        
         data =  ItemAdapter(item).asdict()
         rule = {"pdf_content_hash" : data['pdf_content_hash']}
+        
+        existing_document =  self.db[self.collection_name].find_one(rule)
+        
+        if existing_document is None:
+            data['ts_updated'] = None
+        else:
+            data['ts_updated'] = datetime.utcnow()
+            data['update_counter'] = 1 + existing_document.get('update_counter', 0) 
+ 
         self.db[self.collection_name].update_one(rule, {"$set": data}, upsert=True)
         return item
 

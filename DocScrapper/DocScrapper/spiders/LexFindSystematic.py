@@ -8,8 +8,9 @@ from hashlib import sha256
 from DocScrapper.items import PdfMetaData
 import json
 import logging
-
-
+from urllib.parse import urlencode
+from PyPDF2 import PdfReader
+import io
 logger = logging.getLogger(__name__)
 
 START_URL = 'https://www.lexfind.ch/api/fe/de/global/systematics'
@@ -26,13 +27,7 @@ LANGUAGES = ['it', 'de', 'fr']
 
 BASE_URL = "https://www.lexfind.ch/api/fe/de/global/systematics?active_only=false&category_filter%5B%5D=1&category_filter%5B%5D=2&category_filter%5B%5D=3&category_filter%5B%5D=4&category_filter%5B%5D=5&category_filter%5B%5D=6&category_filter%5B%5D=7&category_filter%5B%5D=8&category_filter%5B%5D=9&entity_filter%5B%5D=1&entity_filter%5B%5D=10&entity_filter%5B%5D=11&entity_filter%5B%5D=12&entity_filter%5B%5D=13&entity_filter%5B%5D=14&entity_filter%5B%5D=15&entity_filter%5B%5D=16&entity_filter%5B%5D=17&entity_filter%5B%5D=18&entity_filter%5B%5D=19&entity_filter%5B%5D=2&entity_filter%5B%5D=20&entity_filter%5B%5D=21&entity_filter%5B%5D=22&entity_filter%5B%5D=23&entity_filter%5B%5D=24&entity_filter%5B%5D=25&entity_filter%5B%5D=26&entity_filter%5B%5D=27&entity_filter%5B%5D=28&entity_filter%5B%5D=3&entity_filter%5B%5D=4&entity_filter%5B%5D=5&entity_filter%5B%5D=6&entity_filter%5B%5D=7&entity_filter%5B%5D=8&entity_filter%5B%5D=9&tols_for_systematics%5B%5D={tols_id}"
 
-try:
-    MAPPER =  requests.get(START_URL , params= INIT_PARAMS , headers= HEADERS).content
-except requests.exceptions.RequestException as e:
-    logger.error(f"Request failed at initial MAPPERS: {e}")
-
-MAPPER = json.loads(MAPPER)
-
+ 
 class LexfindsystematicSpider(scrapy.Spider):
     name = "LexFindSystematic"
     allowed_domains = ["www.lexfind.ch"]
@@ -43,12 +38,25 @@ class LexfindsystematicSpider(scrapy.Spider):
         super(LexfindsystematicSpider, self).__init__()
 
     def start_requests(self):
-        """Perform intial requests on the tol ids that are in the initial MAPPER"""
+        """Get the initial mapper"""
+        
+        yield Request(
+                url = f'{START_URL}?{urlencode(INIT_PARAMS, doseq=True)}',
+                headers=HEADERS,
+                 callback=self.mapper_requests,
+             )
+
+    def mapper_requests(self,response):
+        """Using the mapper add """
+        try:
+            MAPPER = response.json() 
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Something went wrong with requesting MAPPER, or did not receive Json in mapper_requests: {e}")
+
         for key in MAPPER.keys() :
              
             yield JsonRequest(
                 url = BASE_URL.format(tols_id=key),
-              
                 headers=HEADERS,
                 callback=self.parse_page,
                 cb_kwargs={
@@ -65,10 +73,9 @@ class LexfindsystematicSpider(scrapy.Spider):
         tols = response['tols']
 
         for tols_item in tols:
-            # print(tols_item)
             for language in LANGUAGES:
-                page_pdf_url = f"https://www.lexfind.ch/fe/de/tol/{tols_item['id']}/{language}"
-                version_url = f"https://www.lexfind.ch/api/fe/de/texts-of-law/{tols_id}/with-version-groups"
+                page_pdf_url = f"https://www.lexfind.ch/fe/{language}/tol/{tols_item['id']}/{language}"
+                version_url = f"https://www.lexfind.ch/api/fe/{language}/texts-of-law/{tols_id}/with-version-groups"
                 meta_data = {
                         "id": tols_item['id'],
                         "title" : tols_item['title'],
@@ -103,12 +110,26 @@ class LexfindsystematicSpider(scrapy.Spider):
         meta_data['pdf_download_url'] = pdf_download_url
 
         #download and hash the pdf
-        pdf_binary = requests.get(pdf_download_url, headers= PDF_HEADERS).content
+        yield   Request (pdf_download_url, 
+                         headers= PDF_HEADERS,
+                         callback= self.parse_pdf,
+                           cb_kwargs={
+                                    "meta_data": meta_data
+                                    }
+                  )
+
+
+    def parse_pdf(self, response, meta_data):
+        
+        pdf_binary = response.body
+        
+        # check if pdf is valid and hash it.
+        meta_data['is_valid_pdf'] = PdfReader(io.BytesIO(pdf_binary)).pages and True
         meta_data['pdf_content_hash'] = sha256(pdf_binary).hexdigest()
 
         #get month year in order to upload to a corresponding folder
         _, month, year = meta_data['version_last_update'].split('.')
-
+        
         # create upload link, and upload pdf
         blob_storage_relative_path = f"{meta_data['language']}/{year}/{month}/{meta_data['pdf_content_hash']}.pdf"
         meta_data['blob_relative_path'] = blob_storage_relative_path
