@@ -43,8 +43,8 @@ $ python -m venv .venv
 Activate the venv
 
 ```
-$ venv/Scripts/Activate (Linux)
-$ source venv/bin/activate (Windows)
+$ .venv/Scripts/Activate (Linux)
+$ source .venv/bin/activate (Windows)
 ```
 
 
