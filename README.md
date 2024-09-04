@@ -1,4 +1,4 @@
-# Scraping Pdf Metadata and pdf downloader for LexFind
+#  Pdf Metadata Scrapper and pdf downloader for LexFind
 # (https://www.lexfind.ch/fe/de/systematic)
 
 ## 1. Architecture
