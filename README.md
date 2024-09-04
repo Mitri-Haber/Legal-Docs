@@ -6,8 +6,8 @@
 - **1.1: spiders**: 
     -  Request a mapper used by the javascript request for url automation
     -  Iterate over the elements of the mapper to get to pages and collect metadata 
-    -  Iterare over pdf landing pages, while taking in cosinderation the latest version of pdf , and enrich metadata, Download pdfs 
-    -  Enrich metadata, upload pdf to azure blob, and upsert Metada
+    -  Iterare over pdf landing pages, and filtering on latest version of pdf , enrich metadata, and Download pdfs 
+    -  Enrich metadata again, upload pdf to azure blob, and upsert Metada
 - **1.2: pipelines**
     - Pipline to handle upserting pdf metada in MongoDB that have ts_upserted and upser_counter
     - External Azure blob connector called from spiders
